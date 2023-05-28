@@ -179,7 +179,8 @@ bool Triangulation::triangulation(
         points2_normalized[i] = T2 * points1_tmp;
 	}
     // construct matrix W, Wf = 0,solve the equation using SVD, F is the last column of V, we recover fundamental matrix from F,
-    Matrix W(points_0.size(), 9, 0.0);
+    int num_points = points_0.size();
+    Matrix W(num_points, 9, 0.0);
     for (int i = 0; i < points_0.size(); i++)
     {
         W(i, 0) = points1_normalized[i][0] * points2_normalized[i][0];
@@ -192,21 +193,26 @@ bool Triangulation::triangulation(
         W(i, 7) = points1_normalized[i][1];
         W(i, 8) = 1;
     }
+    std::cout<<"W line 195 is correct"<<std::endl;
     // solve the equation using SVD   // w = n*9, U = n*n, S = n*9, V = 9*9
-    Matrix V(points_0.size(), points_0.size(), 0.0);
-    Matrix U(points_0.size(), 9, 0.0);
-    Matrix S(9, 9, 0.0);
+    Matrix U(num_points, num_points, 0.0);
+    Matrix S(num_points, 9, 0.0);
+    Matrix V(9, 9, 0.0);
+    
     svd_decompose(W,U,S,V);
+   
+    std::cout<<"S line 204 is correct"<<std::endl;
     // get the last column of V
     Vector F = V.get_column(8);
     // construct the fundamental matrix, recovered from normalized points
     Matrix33 F_normalized(F[0], F[1], F[2],
-        						  F[3], F[4], F[5],
-        						  F[6], F[7], F[8]);
+        				  F[3], F[4], F[5],
+        				  F[6], F[7], F[8]);
     // enforce the rank 2 constraint
     Matrix33 U_f(0.0);
     Matrix33 S_f(0.0);
     Matrix33 V_f(0.0);
+
     svd_decompose(F_normalized, U_f, S_f, V_f);
     S_f(2, 2) = 0;
     Matrix33 F_f = U_f * S_f * V_f.transpose();
@@ -221,7 +227,7 @@ bool Triangulation::triangulation(
     K1(0, 0) = fx; K1(1, 1) = fy; K1(0, 2) = cx; K1(1, 2) = cy; K1(2, 2) = 1;
     K2(0, 0) = fx;K2(1, 1) = fy;K2(0, 2) = cx; K2(1, 2) = cy; K2(2, 2) = 1;
 
-
+  
     Matrix33 E = K2.transpose() * F_denormalized * K1;
     // Compute the SVD of E
     Matrix33 U_e(0.0);
@@ -246,10 +252,12 @@ bool Triangulation::triangulation(
     Vector3D t2 = -U_e.get_column(2);
     // compute the 3D points and judge whether the points are in front of the camera to determine the correct rotation and translation
     // first we need to construct the projection matrix
+    std::cout<<"project matrix"<<std::endl;
     Matrix34 P1(0.0);
     Matrix34 P2(0.0);
     Matrix34 P3(0.0);
     Matrix34 P4(0.0);
+
     P1.set_column(0, R1.get_column(0));
     P1.set_column(1, R1.get_column(1));
     P1.set_column(2, R1.get_column(2));
@@ -286,23 +294,30 @@ bool Triangulation::triangulation(
     int positive_count3 = 0;
     int positive_count4 = 0;
     
-    for (int i = 0; i < points_1.size(); i++) {
-    Vector3D x1(points_1[i].x(), points_1[i].y(), 1);
-    Vector3D x0(points_0[i].x(), points_0[i].y(), 1);
+
     // compute the 3D points
-    Matrix X1(3, 1, 0.0);
-    Matrix X0(3, 1, 0.0);
+
     // linear method to triangulate the 3D points AP = 0, where A is 4*4 matrix, P is 4*1 matrix
     for (int i = 0; i < points_0.size(); i++) {
-        Vector2D x1(points_1[i].x(), points_1[i].y());
-        Vector2D x0(points_0[i].x(), points_0[i].y());
+        double pt0_x = points_0[i].x();
+        double pt0_y = points_0[i].y();
+        double pt1_x = points_1[i].x();
+        double pt1_y = points_1[i].y();
+        Vector2D x1(pt1_x,pt1_y);
+        Vector2D x0(pt0_x,pt0_y);
         // compute the 3D points
+
        
         // linear method to triangulate the 3D points AP = 0, where A is 4*3 matrix, P is 3*1 matrix, we can use SVD to solve this problem
-        Vector3D X1 = linear_triangulation(x0,x1,P,P1);
-        Vector3D X2 = linear_triangulation(x0,x1,P,P2);
-        Vector3D X3 = linear_triangulation(x0,x1,P,P3);
-        Vector3D X4 = linear_triangulation(x0,x1,P,P4);
+        Vector3D X1; 
+        X1= linear_triangulation(x0, x1, P, P1);
+        Vector3D X2; 
+        X2= linear_triangulation(x0, x1, P, P2);
+        Vector3D X3;
+        X3= linear_triangulation(x0, x1, P, P3);
+        Vector3D X4; 
+        X4= linear_triangulation(x0, x1, P, P4);
+   
         // judge whether the points are in front of the camera
         if (X1[2] > 0) {
 			positive_count1++;
@@ -341,32 +356,22 @@ bool Triangulation::triangulation(
     }
     // compute the 3D points, recover the 3D points from the 2D points
     for (int i = 0; i < points_0.size(); i++) {
-        Vector2D x1(points_1[i].x(), points_1[i].y());
-        Vector2D x0(points_0[i].x(), points_0[i].y());
+        double pt0_x = points_0[i].x();
+        double pt0_y = points_0[i].y();
+        double pt1_x = points_1[i].x();
+        double pt1_y = points_1[i].y();
+        Vector2D x1(pt1_x, pt1_y);
+        Vector2D x0(pt0_x, pt0_y);
         // compute the 3D points
 
         // linear method to triangulate the 3D points AP = 0, where A is 4*3 matrix, P is 3*1 matrix, we can use SVD to solve this problem
-        Vector3D X1 = linear_triangulation(x0, x1, P, final_P);
+        Vector3D X1; 
+        X1= linear_triangulation(x0, x1, P, final_P);
+
         points_3d.push_back(X1);
     }
-    
-
-
-
-
-
-    
-    }
-
-
-
-
-
-
-
-
-
-
+    std::cout<<"points_3d is "<<points_3d<<std::endl;
+   
 
 
     // TODO: check if the input is valid (always good because you never known how others will call your function).
@@ -399,13 +404,15 @@ Vector3D linear_triangulation(const Vector2D& x1, const Vector2D& x2, const Matr
 	A.set_row(1, x1.y() * P1.get_column(2) - P1.get_column(1));
 	A.set_row(2, x2.x() * P2.get_column(2) - P2.get_column(0));
 	A.set_row(3, x2.y() * P2.get_column(2) - P2.get_column(1));
+    //std::cout<<"A is"<<A<<std::endl;
 	// compute the SVD of A
     //solve_least_squares(const Matrix &A, const std::vector<double> &b, std::vector<double> &x) the method has been introduced
     // remember we calculate svd of a and then use the last column of V to get the 3D points
     std::vector<double> b(4, 0.0);
     std::vector<double> x(3, 0.0);
     solve_least_squares(A, b, x);
-    Vector3D X(x[0], x[1], x[2]);
+
+    Vector3D X(x);
 
 	return X;
 }
