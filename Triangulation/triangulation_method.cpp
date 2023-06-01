@@ -440,9 +440,9 @@ bool Triangulation::triangulation(
         X1 = non_linear_triangulation(x0,x1,X1,P, final_P); // refine the linear points
         //std::cout<< X1 << std::endl;
         points_3d.push_back(X1);
-        double error_evaluation = calculate_error(points_3d,x0_pts,x1_pts,final_P,P);
-        std::cout<< "error_result "<<error_evaluation<<std::endl;
     }
+    double error_evaluation = calculate_error(points_3d,x0_pts,x1_pts,final_P,P);
+    std::cout<< "error_result "<<error_evaluation<<std::endl;
     return points_3d.size() > 0;
 }
 
