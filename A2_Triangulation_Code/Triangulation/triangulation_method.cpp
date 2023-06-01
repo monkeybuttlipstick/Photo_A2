@@ -334,7 +334,8 @@ bool Triangulation::triangulation(
 
 
         // linear method to triangulate the 3D points AP = 0, where A is 4*3 matrix, P is 3*1 matrix, we can use SVD to solve this problem
-        Vector3D X1 = non_linear_triangulation(x0, x1, P, final_P); // linear_triangulation(x0,x1,P,P1);
+        Vector3D X1 = linear_triangulation(x0,x1,P final_P);
+	X1 = non_linear_triangulation(x0, x1,X1,P, final_P); // refine the linear points
         //std::cout<< X1 << std::endl;
 
         points_3d.push_back(X1);
@@ -420,7 +421,7 @@ public:
         return 0;
     }
 };
-Vector3D non_linear_triangulation(const Vector2D& x1, const Vector2D& x2, const Matrix34& P1, const Matrix34& P2) {
+Vector3D non_linear_triangulation(const Vector2D& x1, const Vector2D& x2, const Vector3D& initial_value, const Matrix34& P1, const Matrix34& P2) {
     // call the tutorial optimizer
     MyObjective obj(4, 3,x1,x2,P1,P2);
 
@@ -428,7 +429,7 @@ Vector3D non_linear_triangulation(const Vector2D& x1, const Vector2D& x2, const 
     Optimizer_LM lm;
 
     /// initialized the variables. Later x will be modified after optimization.
-    std::vector<double> x = { 4.0, -4.0,4.0 }; // Let's guess the initial values to be (4.0, 4.0)
+    std::vector<double> x = {initial_value[0],initial_value[1],initial_value[2]}; // Let's guess the initial values to be (4.0, 4.0)
 
     /// optimize (i.e., minimizing the objective function).
     bool status = lm.optimize(&obj, x);
